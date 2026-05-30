@@ -3,6 +3,28 @@ const fs = require('fs');
 const cron = require('node-cron');
 const path = require('path');
 const PDFDocument = require('pdfkit');
+const https = require('https');
+
+// Credenciais Secretas do Telegram
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+// Função que envia a mensagem
+function avisarChefeNoTelegram(mensagem) {
+    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(mensagem)}`;
+    
+    https.get(url, (res) => {
+        if (res.statusCode === 200) {
+            console.log('✅ Mensagem enviada para o Telegram com sucesso!');
+        } else {
+            console.log('⚠️ Falha ao enviar para o Telegram. Status:', res.statusCode);
+        }
+    }).on('error', (e) => {
+        console.error('Erro na requisição do Telegram:', e);
+    });
+}
+
+// AVISA ASSIM QUE O CÓDIGO RODAR (Logo que o PC ligar)
+avisarChefeNoTelegram("🤖 Fala, chefe! O notebook de backup ligou e o servidor de Comissões já está rodando 100% no piloto automático!");
 
 const serviceAccount = require('./serviceAccountKey.json');
 admin.initializeApp({
