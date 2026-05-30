@@ -7,7 +7,7 @@ O projeto conta com níveis de acesso de segurança (perfil vendedor vs. perfil 
 ## 🚀 Funcionalidades
 
 * **Painel de Lançamentos:** Interface otimizada para os vendedores lançarem contratos, marcas, OS e valores bases, com bloqueio automático de edições de pagamento.
-* **Módulo Financeiro:** Acesso restrito para contas autorizadas (ex: `financeiro@...`), liberando controle total sobre baixas, status de pagamento, formas de pagamento e datas.
+* **Módulo Financeiro:** Acesso restrito para contas autorizadas, liberando controle total sobre baixas, status de pagamento, formas de pagamento e datas.
 * **Divisão de Comissões Inteligente:** Cálculo automatizado que divide a assessoria entre Venda Direta, Porcentagem de Representante e Porcentagem de Encarregada.
 * **Geração de Relatórios (Excel e PDF):**
   * **Relatório de Comissões:** Exporta um arquivo Excel dividido em abas (Vendas, Liderança) contendo apenas os contratos faturados/pagos.
@@ -16,44 +16,43 @@ O projeto conta com níveis de acesso de segurança (perfil vendedor vs. perfil 
 
 ## 🛠️ Tecnologias Utilizadas
 
-* **Front-end:** React.js, React Router DOM, React Hot Toast (Notificações).
-* **Back-end / Infra:** Node.js, PM2 (Gerenciamento de Processos).
-* **Banco de Dados & Autenticação:** Firebase (Firestore & Auth).
-* **Exportação de Dados:** biblioteca `xlsx` (para planilhas).
-* **Integrações:** API Oficial do Telegram.
-* **Hospedagem Front-end:** Netlify.
+* **Front-end:** React.js, React Router DOM, React Hot Toast
+* **Back-end / Infra:** Node.js, PM2
+* **Banco de Dados & Autenticação:** Firebase (Firestore & Auth)
+* **Exportação de Dados:** XLSX (SheetJS)
+* **Integrações:** API Oficial do Telegram
+* **Hospedagem Front-end:** Netlify
 
 ## ⚙️ Instalação e Execução (Local)
 
 **1. Clone o repositório:**
-\`\`\`bash
-git clone https://github.com/SEU_USUARIO/NOME_DO_REPOSITORIO.git
-\`\`\`
+```bash
+git clone [https://github.com/ovinirocha/comissoes-backup.git](https://github.com/ovinirocha/comissoes-backup.git)
+```
 
 **2. Instale as dependências (Front-end e Servidor):**
-\`\`\`bash
+```bash
 npm install
-\`\`\`
+```
 
 **3. Configure as Variáveis de Ambiente:**
 Crie um arquivo `.env` na raiz do projeto com as credenciais do seu Bot do Telegram:
-\`\`\`text
+```text
 TELEGRAM_TOKEN=sua_chave_aqui
 TELEGRAM_CHAT_ID=seu_chat_id_aqui
-\`\`\`
+```
 *(Nota: O arquivo `.env` deve estar adicionado ao seu `.gitignore`).*
 
 **4. Inicie a aplicação Front-end:**
-\`\`\`bash
+```bash
 npm run dev
-# ou npm start, dependendo do bundler (Vite/CRA)
-\`\`\`
+```
 
 **5. Inicie o Servidor Autônomo com PM2:**
-\`\`\`bash
+```bash
 pm2 start index.js --name "robo-comissoes"
 pm2 save
-\`\`\`
+```
 
 ## 🔒 Segurança
 
