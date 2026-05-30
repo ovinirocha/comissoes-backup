@@ -1,66 +1,79 @@
+require('dotenv').config(); // Puxa os dados do arquivo .env
 const admin = require('firebase-admin');
 const fs = require('fs');
 const cron = require('node-cron');
 const path = require('path');
 const PDFDocument = require('pdfkit');
-const https = require('https');
+const TelegramBot = require('node-telegram-bot-api'); // Nossa nova biblioteca interativa
 
-// Credenciais Secretas do Telegram
+// ---------------------------------------------------------
+// 1. CONFIGURAÇÃO DO ROBÔ DO TELEGRAM
+// ---------------------------------------------------------
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-// Função que envia a mensagem
-function avisarChefeNoTelegram(mensagem) {
-    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(mensagem)}`;
-    
-    https.get(url, (res) => {
-        if (res.statusCode === 200) {
-            console.log('✅ Mensagem enviada para o Telegram com sucesso!');
-        } else {
-            console.log('⚠️ Falha ao enviar para o Telegram. Status:', res.statusCode);
-        }
-    }).on('error', (e) => {
-        console.error('Erro na requisição do Telegram:', e);
-    });
-}
 
-// AVISA ASSIM QUE O CÓDIGO RODAR (Logo que o PC ligar)
-avisarChefeNoTelegram("🤖 Fala, chefe! O notebook de backup ligou e o servidor de Comissões já está rodando 100% no piloto automático!");
+// O {polling: true} é o superpoder que faz ele ler suas mensagens
+const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 
+// Avisa assim que o PC ligar ou o PM2 reiniciar
+bot.sendMessage(TELEGRAM_CHAT_ID, "🤖 Fala, chefe! O servidor de Comissões ligou e estou aguardando seus comandos. Digite /status para testar.");
+
+// O robô responde ao comando /status
+bot.onText(/\/status/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, "✅ Tudo 100% online por aqui! PM2 rodando liso e bancos de dados conectados.");
+});
+
+// O robô conversa com você
+bot.on('message', (msg) => {
+  const chatId = msg.chat.id;
+  const texto = msg.text ? msg.text.toLowerCase() : '';
+
+  if (texto.startsWith('/')) return; // Pula os comandos com barra
+
+  if (texto.includes('oi') || texto.includes('olá')) {
+    bot.sendMessage(chatId, `Olá, ${msg.from.first_name}! O financeiro está sob controle. 🚀`);
+  }
+});
+
+
+// ---------------------------------------------------------
+// 2. CONFIGURAÇÃO DO FIREBASE (BANCO DE DADOS)
+// ---------------------------------------------------------
 const serviceAccount = require('./serviceAccountKey.json');
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 const db = admin.firestore();
 
-// Pasta principal
+
+// ---------------------------------------------------------
+// 3. INTELIGÊNCIA DE PASTAS E ARQUIVOS
+// ---------------------------------------------------------
 const dir = './arquivos_salvos';
 if (!fs.existsSync(dir)){
     fs.mkdirSync(dir);
 }
 
-// ---------------------------------------------------------
-// NOVA FUNÇÃO: DESCOBRIR O MÊS E CRIAR A PASTA
-// ---------------------------------------------------------
 function obterPastaDoMes() {
   const data = new Date();
   const meses = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
   
   const nomeMes = meses[data.getMonth()];
   const ano = data.getFullYear();
-  const nomeDaPasta = `${nomeMes}-${ano}`; // Ex: maio-2026
+  const nomeDaPasta = `${nomeMes}-${ano}`; 
   
   const caminhoCompleto = path.join(dir, nomeDaPasta);
 
-  // Se a pasta do mês ainda não existir, o robô cria na hora
   if (!fs.existsSync(caminhoCompleto)) {
     fs.mkdirSync(caminhoCompleto);
   }
-  
   return caminhoCompleto;
 }
 
+
 // ---------------------------------------------------------
-// FUNÇÃO 1: BACKUP DIÁRIO (JSON)
+// 4. FUNÇÃO DE BACKUP DIÁRIO (JSON)
 // ---------------------------------------------------------
 async function fazerBackup() {
   console.log('A iniciar o backup diário...');
@@ -71,26 +84,32 @@ async function fazerBackup() {
       todosContratos.push({ id: doc.id, ...doc.data() });
     });
 
-    const pastaDestino = obterPastaDoMes(); // Chama a inteligência de pastas
+    const pastaDestino = obterPastaDoMes(); 
     const dataHoje = new Date().toISOString().split('T')[0]; 
     const caminhoArquivo = path.join(pastaDestino, `backup_diario_${dataHoje}.json`);
 
     fs.writeFileSync(caminhoArquivo, JSON.stringify(todosContratos, null, 2));
     console.log(`✅ Backup guardado na pasta ${pastaDestino}`);
+    
+    // O robô avisa no seu Telegram que o backup foi feito!
+    bot.sendMessage(TELEGRAM_CHAT_ID, `💾 Chefe, acabei de realizar o backup diário com sucesso na pasta: ${nomeDaPasta}`);
+
   } catch (erro) {
     console.error('❌ Erro no backup diário:', erro);
+    bot.sendMessage(TELEGRAM_CHAT_ID, `⚠️ Chefe, deu algum erro na hora de fazer o backup diário!`);
   }
 }
 
+
 // ---------------------------------------------------------
-// FUNÇÃO 2: FECHAMENTO MENSAL (ESTILO SISTEMA WEB)
+// 5. FECHAMENTO MENSAL (PDF)
 // ---------------------------------------------------------
 async function fazerFechamentoMensal() {
   console.log('A gerar o fechamento mensal...');
   try {
     const snapshot = await db.collection('lancamentos').get();
     
-    const pastaDestino = obterPastaDoMes(); // Chama a inteligência de pastas
+    const pastaDestino = obterPastaDoMes(); 
     const dataMes = new Date().toISOString().substring(0, 7); 
     const caminhoPDF = path.join(pastaDestino, `fechamento_${dataMes}.pdf`);
     
@@ -161,21 +180,25 @@ async function fazerFechamentoMensal() {
     doc.end();
     console.log(`📄 PDF de fechamento salvo na pasta ${pastaDestino}`);
 
+    // O robô avisa no seu Telegram que o PDF do mês foi criado!
+    bot.sendMessage(TELEGRAM_CHAT_ID, `📊 Chefe, o PDF de Fechamento Mensal já foi gerado e salvo no servidor! Total movimentado: R$ ${totalGeral.toFixed(2)}`);
+
   } catch (erro) {
     console.error('❌ Erro ao gerar o PDF:', erro);
+    bot.sendMessage(TELEGRAM_CHAT_ID, `⚠️ Chefe, deu erro na hora de gerar o PDF de fechamento mensal!`);
   }
 }
 
+
 // ---------------------------------------------------------
-// RELÓGIOS
+// 6. RELÓGIOS (AGENDAMENTOS CRON)
 // ---------------------------------------------------------
+// Roda todo dia às 23:59
 cron.schedule('59 23 * * *', () => {
   fazerBackup();
 });
 
+// Roda todo dia 1º de cada mês à meia-noite
 cron.schedule('0 0 1 * *', () => {
   fazerFechamentoMensal();
 });
-
-// fazerBackup();
-// fazerFechamentoMensal();
